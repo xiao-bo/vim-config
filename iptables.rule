@@ -1,0 +1,75 @@
+#!/bin/bash
+EXTIF="eth0"
+INIF1="eth1"
+#INIF2="eth2"
+#INIF3="eth3"
+#INIF4="eth4"
+LOCAL_IP="140.112.28.139"
+
+echo "1" >/proc/sys/net/ipv4/ip_forward
+
+# flush all rules
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+
+# policy
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD DROP
+iptables -t nat -P PREROUTING ACCEPT
+iptables -t nat -P OUTPUT ACCEPT
+iptables -t nat -P POSTROUTING ACCEPT
+
+# LOG
+iptables -A INPUT -j LOG
+
+# localhost
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+
+# packets from Edison (accept all)
+iptables -A INPUT -i $INIF1 -j ACCEPT
+#iptables -A INPUT -i $INIF2 -j ACCEPT
+#iptables -A INPUT -i $INIF3 -j ACCEPT
+#iptables -A INPUT -i $INIF4 -j ACCEPT
+
+
+# allow list
+iptables -A INPUT -i $EXTIF -s 140.0.0.0/8 -j ACCEPT
+iptables -A INPUT -s 10.0.0.0/8 -j ACCEPT
+iptables -A INPUT -s 192.168.0.0/16 -j ACCEPT
+
+# allow forward
+iptables -A FORWARD -i $EXTIF -s 140.0.0.0/8 -j ACCEPT
+iptables -A FORWARD -s 10.0.0.0/8 -j ACCEPT
+iptables -A FORWARD -s 192.168.0.0/16 -j ACCEPT
+
+# NAT
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $EXTIF -j MASQUERADE
+#iptables -t nat -A POSTROUTING -s 10.1.3.0/24 -o $EXTIF -j MASQUERADE
+#iptables -t nat -A POSTROUTING -s 10.1.2.0/24 -o $EXTIF -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 192.168.0.0/16 -o $EXTIF -j MASQUERADE
+
+# port to wifi gateway
+#iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20000 -j DNAT --to-destination 10.1.3.2:22
+
+# port to ethernet Edison
+iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20001 -j DNAT --to-destination 10.8.0.43:22
+iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20001 -j DNAT --to-destination 10.8.0.78:22
+#iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20002 -j DNAT --to-destination 10.1.1.5:22
+#iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20003 -j DNAT --to-destination 10.1.1.6:22
+
+# port to wifi Edison
+#iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20004 -j DNAT --to-destination 10.1.3.2:16001
+#iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20005 -j DNAT --to-destination 10.1.3.2:16002
+#iptables -t nat -A PREROUTING -d $LOCAL_IP -p tcp --dport 20006 -j DNAT --to-destination 10.1.3.2:16003
+
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+
+# reply ping 
+iptables -A INPUT -p icmp --icmp-type 8 -d $LOCAL_IP -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+
