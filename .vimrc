@@ -27,11 +27,14 @@ Plugin 'rstacruz/sparkup', {'rtp': 'vim/'}
 " Plugin 'ascenator/L9', {'name': 'newL9'}
 
 Plugin 'preservim/nerdtree'
-autocmd VimEnter * NERDTree
+Plugin 'PhilRunninger/nerdtree-visual-selection'
+autocmd VimEnter * NERDTree | wincmd p
 " plugin from https://github.com/preservim/nerdtree
 " users can visually browse complex directory hierarchies, 
 " quickly open files for reading or editing, and perform basic file system operations.
-
+" CTRL + W + L, will jump to right tab
+" CTRL + W + H, will jump to left tab 
+"
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
 filetype plugin indent on    " required
